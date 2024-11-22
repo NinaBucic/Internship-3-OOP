@@ -50,6 +50,18 @@ namespace Project_manager_app.Classes
             return (ProjectStatus)Enum.Parse(typeof(ProjectStatus), input, true);
         }
 
+        public static bool ConfirmAction(string message)
+        {
+            Console.Write(message + " (yes/no): ");
+            string input = Console.ReadLine().ToLower();
+            while (input != "yes" && input != "no")
+            {
+                Console.Write("Invalid input. Please type 'yes' to confirm or 'no' to cancel: ");
+                input = Console.ReadLine().ToLower();
+            }
+            return input == "yes";
+        }
+
         private bool IsProjectNameTaken(string projectName)
         {
             return _projects.Keys.Any(p => p.Name.Equals(projectName, StringComparison.OrdinalIgnoreCase));
@@ -133,6 +145,102 @@ namespace Project_manager_app.Classes
             Console.Clear();
             Console.WriteLine($"Project '{newProject.Name}' has been added successfully.");
             Console.WriteLine("Press any key to return...");
+            Console.ReadKey();
+        }
+
+        public void DeleteProject()
+        {
+            Console.Write("Enter the name of the project you want to delete: ");
+            var projectName = GetValidStringInput();
+            Console.Clear();
+
+            if (!IsProjectNameTaken(projectName))
+            {
+                Console.WriteLine("Project not found.");
+                Console.WriteLine("Press any key to return...");
+                Console.ReadKey();
+                return;
+            }
+
+            var projectToDelete = _projects.Keys.FirstOrDefault(p => p.Name.Equals(projectName, StringComparison.OrdinalIgnoreCase));
+
+            if (ConfirmAction($"Are you sure you want to delete the project '{projectToDelete.Name}'?"))
+            {
+                _projects.Remove(projectToDelete);
+                Console.WriteLine($"\nProject '{projectToDelete.Name}' has been successfully deleted.");
+                Console.WriteLine("Press any key to return...");
+                Console.ReadKey();
+            }
+            else
+            {
+                Console.WriteLine("\nAction canceled. Press any key to return...");
+                Console.ReadKey();
+            }
+        }
+
+        public void DisplayTasksDueInNext7Days()
+        {
+            Console.WriteLine("Tasks due in the next 7 days:");
+
+            var today = DateTime.Today;
+            var nextWeek = today.AddDays(7);
+
+            var tasksFound = false;
+
+            foreach (var project in _projects)
+            {
+                var projectHasTasksDueInNextWeek = false;
+                foreach (var task in project.Value)
+                {
+                    if (task.DueDate.Date >= today && task.DueDate.Date <= nextWeek)
+                    {
+                        if (!projectHasTasksDueInNextWeek)
+                        {
+                            Console.WriteLine($"\nProject: {project.Key.Name}");
+                            projectHasTasksDueInNextWeek = true;
+                        }
+                        Console.WriteLine($"  Task: {task.Name}");
+                        Console.WriteLine($"    Due Date: {task.DueDate.ToShortDateString()}");
+                        Console.WriteLine($"    Status: {task.Status}");
+                        tasksFound = true;
+                    }
+                }
+            }
+            if (!tasksFound)
+            {
+                Console.WriteLine("No tasks due in the next 7 days.");
+            }
+            Console.WriteLine("\nPress any key to return...");
+            Console.ReadKey();
+        }
+
+        public void DisplayProjectsByStatus()
+        {
+            Console.Write("Enter the status to filter by (Active, Pending, Completed): ");
+            var selectedStatus = GetValidProjectStatus();
+
+            Console.Clear();
+            Console.WriteLine($"Projects with status '{selectedStatus}':");
+
+            var projectsFound = false;
+
+            foreach (var project in _projects.Keys)
+            {
+                if (project.Status == selectedStatus)
+                {
+                    Console.WriteLine($"\n- {project.Name}");
+                    Console.WriteLine($"  Description: {project.Description}");
+                    Console.WriteLine($"  Start Date: {project.StartDate.ToShortDateString()}");
+                    Console.WriteLine($"  End Date: {project.EndDate.ToShortDateString()}");
+                    projectsFound = true;
+                }
+            }
+
+            if (!projectsFound)
+            {
+                Console.WriteLine($"No projects found with status '{selectedStatus}'.");
+            }
+            Console.WriteLine("\nPress any key to return...");
             Console.ReadKey();
         }
 
