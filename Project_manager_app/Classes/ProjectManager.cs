@@ -29,6 +29,19 @@ namespace Project_manager_app.Classes
             return input;
         }
 
+        public static int PositiveIntegerValidation()
+        {
+            string input = Console.ReadLine();
+            int result;
+            while (!int.TryParse(input, out result) || result <= 0)
+            {
+                Console.Write("Invalid input. Please enter a positive integer: ");
+                input = Console.ReadLine();
+            }
+            return result;
+        }
+
+
         public static DateTime GetValidDateInput()
         {
             string input = Console.ReadLine();
@@ -108,10 +121,6 @@ namespace Project_manager_app.Classes
                 var tasks = projectEntry.Value;
 
                 Console.WriteLine($"Project: {project.Name}");
-                Console.WriteLine($"Description: {project.Description}");
-                Console.WriteLine($"Start Date: {project.StartDate.ToShortDateString()}");
-                Console.WriteLine($"End Date: {project.EndDate.ToShortDateString()}");
-                Console.WriteLine($"Status: {project.Status}");
                 Console.WriteLine("Tasks:");
 
                 if (tasks.Count == 0)
@@ -122,11 +131,7 @@ namespace Project_manager_app.Classes
                 {
                     foreach (var task in tasks)
                     {
-                        Console.WriteLine($"  Task: {task.Name}");
-                        Console.WriteLine($"    Description: {task.Description}");
-                        Console.WriteLine($"    Due Date: {task.DueDate.ToShortDateString()}");
-                        Console.WriteLine($"    Status: {task.Status}");
-                        Console.WriteLine($"    Expected Duration: {task.ExpectedDurationMinutes} minutes");
+                        Console.WriteLine($"  - {task.Name}");
                     }
                 }
 
@@ -269,6 +274,249 @@ namespace Project_manager_app.Classes
             Console.ReadKey();
         }
 
+        private void PrintTasksInProject(Project project)
+        {
+            Console.WriteLine($"Tasks in project '{project.Name}':\n");
+            var tasks = _projects[project];
+            if (tasks.Count == 0)
+            {
+                Console.WriteLine("No tasks available.");
+            }
+            else
+            {
+                foreach (var task in tasks)
+                {
+                    Console.WriteLine($"- {task.Name} (Status: {task.Status})");
+                }
+            }
+            Console.WriteLine("\nPress any key to return...");
+            Console.ReadKey();
+        }
+
+        private void ShowProjectDetails(Project project)
+        {
+            Console.WriteLine($"Project Details for '{project.Name}':");
+            Console.WriteLine($"Description: {project.Description}");
+            Console.WriteLine($"Start Date: {project.StartDate.ToShortDateString()}");
+            Console.WriteLine($"End Date: {project.EndDate.ToShortDateString()}");
+            Console.WriteLine($"Status: {project.Status}");
+            Console.WriteLine("\nPress any key to return...");
+            Console.ReadKey();
+        }
+
+        private void UpdateProjectStatus(Project project, List<Task> tasks)
+        {
+            if (project.Status == ProjectStatus.Completed)
+            {
+                Console.WriteLine("This project is already completed. You cannot change its status.");
+                Console.WriteLine("Press any key to return...");
+                Console.ReadKey();
+                return;
+            }
+
+            Console.WriteLine($"Current status: {project.Status}");
+            Console.Write("Enter new status (Active, Pending, Completed): ");
+            var newStatus = GetValidProjectStatus();
+
+            if (newStatus == ProjectStatus.Completed)
+            {
+                foreach (var task in tasks)
+                {
+                    if (task.Status != TaskStatus.Completed)
+                    {
+                        task.Status = TaskStatus.Completed;
+                    }
+                }
+                Console.WriteLine("\nAll tasks in this project have been marked as Completed.");
+            }
+
+            project.Status = newStatus;
+            Console.WriteLine($"\nProject status updated to {newStatus}.");
+            Console.WriteLine("Press any key to return...");
+            Console.ReadKey();
+        }
+
+
+        private void AddTaskToProject(Project project)
+        {
+            Console.Write("Enter the name of the new task: ");
+            var taskName = GetValidStringInput();
+
+            while (IsTaskNameTaken(project, taskName))
+            {
+                Console.Write("Task name already exists in this project. Please enter a different name: ");
+                taskName = GetValidStringInput();
+            }
+
+            Console.Write("Enter the description of the task: ");
+            var description = GetValidStringInput();
+
+            Console.Write("Enter the due date (YYYY-MM-DD): ");
+            var dueDate = GetValidDateInput();
+
+            Console.Write("Enter the expected duration (in minutes): ");
+            var duration = PositiveIntegerValidation();
+
+            Console.Write("Enter the status of the project (Active, Postponed or Completed):");
+            var status = TaskManager.GetValidTaskStatus();
+
+            var newTask = new Task(taskName, description, dueDate, status, duration, project);
+            _projects[project].Add(newTask);
+
+            Console.Clear();
+            Console.WriteLine($"Task '{newTask.Name}' added to project '{project.Name}' successfully.");
+            Console.WriteLine("Press any key to return...");
+            Console.ReadKey();
+        }
+
+        private void DeleteTaskFromProject(Project project)
+        {
+            if (_projects[project].Count == 0)
+            {
+                Console.WriteLine("No tasks available in this project. Press any key to return...");
+                Console.ReadKey();
+                return;
+            }
+            
+            Console.WriteLine($"Tasks in project '{project.Name}':");
+            foreach(var task in _projects[project])
+            {
+                Console.WriteLine($" - {task.Name}");
+            }
+
+            Console.Write("\nEnter the name of the task to delete: ");
+            var taskName = GetValidStringInput();
+            var taskToDelete = _projects[project].FirstOrDefault(t => t.Name.Equals(taskName, StringComparison.OrdinalIgnoreCase));
+            Console.Clear();
+
+            if (taskToDelete == null)
+            {
+                Console.WriteLine("Task not found. Press any key to return...");
+                Console.ReadKey();
+                return;
+            }
+
+            if (taskToDelete.Status == TaskStatus.Completed)
+            {
+                Console.WriteLine("Cannot delete a completed task.");
+                Console.WriteLine("Press any key to return...");
+                Console.ReadKey();
+                return;
+            }
+
+            if (ConfirmAction($"Are you sure you want to delete the task '{taskToDelete.Name}'?"))
+            {
+                _projects[project].Remove(taskToDelete);
+                Console.WriteLine($"\nTask '{taskToDelete.Name}' has been successfully deleted.");
+            }
+            else
+            {
+                Console.WriteLine("\nAction canceled. Press any key to return...");
+            }
+            Console.ReadKey();
+        }
+
+        private void ShowTotalActiveTaskTime(Project project)
+        {
+            var activeTasks = _projects[project].Where(t => t.Status == TaskStatus.Active).ToList();
+            if (activeTasks.Count == 0)
+            {
+                Console.WriteLine("No active tasks in this project.");
+            }
+            else
+            {
+                var totalDuration = activeTasks.Sum(t => t.ExpectedDurationMinutes);
+                Console.WriteLine($"Total expected duration for all active tasks in project '{project.Name}': {totalDuration} minutes.");
+            }
+            Console.WriteLine("Press any key to return...");
+            Console.ReadKey();
+        }
+
+        public void ManageProject()
+        {
+            foreach (var project in _projects.Keys)
+            {
+                Console.WriteLine($"- {project.Name}");
+            }
+
+            Console.Write("\nSelect a project by its name to manage: ");
+            var projectName = GetValidStringInput();
+            var selectedProject = _projects.Keys.FirstOrDefault(p => p.Name.Equals(projectName, StringComparison.OrdinalIgnoreCase));
+            Console.Clear();
+            if (selectedProject == null)
+            {
+                Console.WriteLine("Project not found. Press any key to return...");
+                Console.ReadKey();
+                return;
+            }
+
+            var exit = false;
+            while (!exit)
+            {
+                Console.Clear();
+                Console.WriteLine($"Managing project: {selectedProject.Name}\n");
+                Console.WriteLine("1. View all tasks in the project");
+                Console.WriteLine("2. View project details");
+                Console.WriteLine("3. Update project status");
+                Console.WriteLine("4. Add a new task to the project");
+                Console.WriteLine("5. Delete a task from the project");
+                Console.WriteLine("6. View total expected time for active tasks");
+                Console.WriteLine("0. Go back");
+
+                var choice = Console.ReadLine();
+                Console.Clear();
+
+                switch (choice)
+                {
+                    case "1":
+                        PrintTasksInProject(selectedProject);
+                        break;
+                    case "2":
+                        ShowProjectDetails(selectedProject);
+                        break;
+                    case "3":
+                        UpdateProjectStatus(selectedProject, _projects[selectedProject]);
+                        break;
+                    case "4":
+                        if (selectedProject.Status != ProjectStatus.Completed)
+                        {
+                            AddTaskToProject(selectedProject);
+                            CheckAndUpdateProjectStatus(selectedProject);
+                        }
+                        else
+                        {
+                            Console.WriteLine("Cannot add tasks to a completed project.");
+                            Console.WriteLine("Press any key to return...");
+                            Console.ReadKey();
+                        }
+                        break;
+                    case "5":
+                        if (selectedProject.Status != ProjectStatus.Completed)
+                        {
+                            DeleteTaskFromProject(selectedProject);
+                            CheckAndUpdateProjectStatus(selectedProject);
+                        }
+                        else
+                        {
+                            Console.WriteLine("Cannot delete tasks of a completed project.");
+                            Console.WriteLine("Press any key to return...");
+                            Console.ReadKey();
+                        }
+                        break;
+                    case "6":
+                        ShowTotalActiveTaskTime(selectedProject);
+                        break;
+                    case "0":
+                        exit = true;
+                        break;
+                    default:
+                        Console.WriteLine("Invalid option. Press any key to return...");
+                        Console.ReadKey();
+                        break;
+                }
+            }
+        }
+
         public void ManageTask()
         {
             foreach (var project in _projects.Keys)
@@ -277,7 +525,7 @@ namespace Project_manager_app.Classes
             }
             Console.Write("\nSelect a project by its name to view tasks: ");
 
-            var projectName = ProjectManager.GetValidStringInput();
+            var projectName = GetValidStringInput();
             var selectedProject = _projects.Keys.FirstOrDefault(p => p.Name.Equals(projectName, StringComparison.OrdinalIgnoreCase));
             Console.Clear();
             if (selectedProject == null)

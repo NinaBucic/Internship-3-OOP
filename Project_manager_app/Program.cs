@@ -72,7 +72,7 @@ namespace Project_manager_app
                         projectManager.DisplayProjectsByStatus();
                         break;
                     case "6":
-                        
+                        projectManager.ManageProject();
                         break;
                     case "7":
                         projectManager.ManageTask();
