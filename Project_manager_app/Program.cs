@@ -19,7 +19,6 @@ namespace Project_manager_app
             Dictionary<Project, List<Task>> projects = new Dictionary<Project, List<Task>>();
 
             ProjectManager projectManager = new ProjectManager(projects);
-            TaskManager taskManager = new TaskManager();
 
             var project1 = new Project("Website Redesign", "Redesign and update the company website.", DateTime.Today, DateTime.Today.AddMonths(1), ProjectStatus.Active);
             var project2 = new Project("Mobile App Development", "Develop a mobile app for online store.", DateTime.Today.AddMonths(1), DateTime.Today.AddMonths(2), ProjectStatus.Pending);
@@ -76,10 +75,9 @@ namespace Project_manager_app
                         
                         break;
                     case "7":
-                        
+                        projectManager.ManageTask();
                         break;
                     case "0":
-                        Console.WriteLine("Exiting application. Goodbye!");
                         exit=true;
                         break;
                     default:

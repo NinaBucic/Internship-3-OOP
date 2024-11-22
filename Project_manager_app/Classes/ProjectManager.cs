@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TaskStatus = Project_manager_app.Enums.TaskStatus;
+using Project_manager_app.Classes;
 
 namespace Project_manager_app.Classes
 {
@@ -65,6 +67,29 @@ namespace Project_manager_app.Classes
         private bool IsProjectNameTaken(string projectName)
         {
             return _projects.Keys.Any(p => p.Name.Equals(projectName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private bool IsTaskNameTaken(Project project, string taskName)
+        {
+            if (!_projects.ContainsKey(project))
+            {
+                return false;
+            }
+            return _projects[project].Any(t => t.Name.Equals(taskName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public void CheckAndUpdateProjectStatus(Project project)
+        {
+            if (project.Status == ProjectStatus.Completed)
+            {
+                return;
+            }
+        
+            var allTasksCompleted = _projects[project].All(t => t.Status == TaskStatus.Completed);
+            if (allTasksCompleted)
+            {
+                project.Status = ProjectStatus.Completed;
+            }
         }
 
         public void PrintAllProjectsWithTasks()
@@ -244,6 +269,49 @@ namespace Project_manager_app.Classes
             Console.ReadKey();
         }
 
+        public void ManageTask()
+        {
+            foreach (var project in _projects.Keys)
+            {
+                Console.WriteLine($"- {project.Name}");
+            }
+            Console.Write("\nSelect a project by its name to view tasks: ");
+
+            var projectName = ProjectManager.GetValidStringInput();
+            var selectedProject = _projects.Keys.FirstOrDefault(p => p.Name.Equals(projectName, StringComparison.OrdinalIgnoreCase));
+            Console.Clear();
+            if (selectedProject == null)
+            {
+                Console.WriteLine("Project with that name not found. Press any key to return...");
+                Console.ReadKey();
+                return;
+            }
+
+            Console.WriteLine($"Tasks in project '{selectedProject.Name}':");
+            var tasks = _projects[selectedProject];
+            if (tasks.Count == 0)
+            {
+                Console.WriteLine("No tasks available in this project. Press any key to return...");
+                Console.ReadKey();
+                return;
+            }
+
+            for (int i = 0; i < tasks.Count; i++)
+            {
+                Console.WriteLine($"{i + 1}. {tasks[i].Name}");
+            }
+
+            Console.Write("\nSelect a task by its number: ");
+            var taskNumber = 0;
+            while (!int.TryParse(Console.ReadLine(), out taskNumber) || taskNumber < 1 || taskNumber > tasks.Count)
+            {
+                Console.Write($"Invalid task selection. Please enter a number between 1 and {tasks.Count}: ");
+            }
+
+            var selectedTask = tasks[taskNumber - 1];
+            TaskManager.ShowTaskSubMenu(selectedTask);
+            CheckAndUpdateProjectStatus(selectedProject);
+        }
 
     }
 }
